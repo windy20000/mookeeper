@@ -1,0 +1,79 @@
+#!/bin/bash
+# MooKeeper PKG 的 postinstall —— 由 Installer 以 root 身份执行。
+# 目标：双击装完即用 —— 清隔离属性、按登录用户铺示例配置/音效、注册登录自启、启动。
+# 任何一步失败都不阻断安装（App 本体已由 payload 放进 /Applications），日志见 /var/log/mookeeper-postinstall.log。
+set -uo pipefail
+
+APP="/Applications/MooKeeper.app"
+LOG="/var/log/mookeeper-postinstall.log"
+exec >>"$LOG" 2>&1
+echo "===== $(date '+%F %T') MooKeeper postinstall 开始 ====="
+
+# 1) 隔离属性：PKG 若经浏览器/邮件/AirDrop 下载，会带 com.apple.quarantine，并被复制进 App
+#    → 首次启动被 Gatekeeper 拦（ad-hoc 签名、未公证）。这里统一清掉，只删 quarantine 不动 provenance。
+/usr/bin/xattr -dr com.apple.quarantine "$APP" 2>/dev/null || true
+
+# 2) 定位真正登录的 GUI 用户（Installer 以 root 跑，$HOME 指向 /var/root）
+CONSOLE_USER="$(/usr/bin/stat -f %Su /dev/console 2>/dev/null || echo '')"
+case "$CONSOLE_USER" in
+  "" | root | loginwindow)
+    echo "没有 GUI 登录用户，跳过用户级安装（App 已装到 ${APP}）"
+    exit 0
+    ;;
+esac
+UID_NUM="$(/usr/bin/id -u "$CONSOLE_USER" 2>/dev/null || echo '')"
+USER_HOME="$(/usr/bin/dscl . -read "/Users/$CONSOLE_USER" NFSHomeDirectory 2>/dev/null | /usr/bin/awk '{print $2}')"
+if [ -z "$UID_NUM" ] || [ ! -d "${USER_HOME:-}" ]; then
+  echo "定位不到 $CONSOLE_USER 的家目录，跳过用户级安装"
+  exit 0
+fi
+echo "登录用户：${CONSOLE_USER}（uid=$UID_NUM, home=${USER_HOME}）"
+
+run_as_user() { /bin/launchctl asuser "$UID_NUM" /usr/bin/sudo -u "$CONSOLE_USER" "$@"; }
+chown_to_user() { /usr/sbin/chown "$CONSOLE_USER" "$@" 2>/dev/null || true; }
+
+# 3) 示例配置（与 install.sh 一致：只放示例，绝不动已有的 config.json）
+/bin/mkdir -p "$USER_HOME/.config/mookeeper"
+for f in config.example.json config.example.zh.json; do
+  if [ -f "$APP/Contents/Resources/$f" ]; then
+    /bin/cp -f "$APP/Contents/Resources/$f" "$USER_HOME/.config/mookeeper/$f"
+    chown_to_user "$USER_HOME/.config/mookeeper/$f"
+  fi
+done
+chown_to_user "$USER_HOME/.config/mookeeper"
+
+# 4) 品牌音效（系统按名解析自定义通知音，见 README 的「系统通知」一节）
+if [ -f "$APP/Contents/Resources/moo.aiff" ]; then
+  /bin/mkdir -p "$USER_HOME/Library/Sounds"
+  /bin/cp -f "$APP/Contents/Resources/moo.aiff" "$USER_HOME/Library/Sounds/moo.aiff"
+  chown_to_user "$USER_HOME/Library/Sounds/moo.aiff"
+  /usr/bin/xattr -d com.apple.quarantine "$USER_HOME/Library/Sounds/moo.aiff" 2>/dev/null || true
+fi
+
+# 5) 登录自启（Label 与 install.sh --autostart 完全一致，重复安装不会堆两份）
+LA_DIR="$USER_HOME/Library/LaunchAgents"
+PLIST="$LA_DIR/com.windy20000.mookeeper.plist"
+/bin/mkdir -p "$LA_DIR"
+/bin/cat >"$PLIST" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.windy20000.mookeeper</string>
+  <key>ProgramArguments</key><array>
+    <string>/usr/bin/open</string><string>$APP</string>
+  </array>
+  <key>RunAtLoad</key><true/>
+</dict></plist>
+EOF
+chown_to_user "$PLIST"
+/bin/chmod 644 "$PLIST"
+
+# 6) 收掉旧实例并启动（macOS 26+ 用 bootstrap/bootout，见 install.sh 注释）
+/usr/bin/pkill -x mookeeper 2>/dev/null || true
+/bin/sleep 1
+/bin/launchctl bootout "gui/$UID_NUM" "$PLIST" 2>/dev/null || true
+/bin/launchctl bootstrap "gui/$UID_NUM" "$PLIST" 2>/dev/null || true
+run_as_user /usr/bin/open -a "$APP" 2>/dev/null || true
+
+echo "===== MooKeeper postinstall 完成 ====="
+exit 0

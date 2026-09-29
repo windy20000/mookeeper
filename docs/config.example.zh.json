@@ -1,0 +1,20 @@
+{
+  "groups": [
+    {
+      "title": "快速体验",
+      "items": [
+        { "key": "calculator", "label": "计算器", "probe": "process", "process": "Contents/MacOS/Calculator$",
+          "start": "open -a Calculator", "stop": "pkill -f 'Contents/MacOS/Calculator$'" },
+        { "key": "web", "label": "本地 HTTP 服务器", "port": 8028, "soundOnStart": true, "confirmStop": true,
+          "start": "ruby -run -e httpd ~/Public -b 127.0.0.1 -p 8028 &", "stop": "kill $(lsof -ti tcp:8028 -s TCP:LISTEN) 2>/dev/null || true",
+          "url": "http://localhost:8028" },
+        { "key": "purge", "label": "释放内存（purge）", "probe": "none",
+          "start": "sudo purge" },
+        { "key": "no-sleep", "label": "1 小时内禁止休眠", "probe": "none",
+          "start": "caffeinate -t 3600 &" },
+        { "key": "safari", "label": "Safari 浏览器", "probe": "check",
+          "check": "pgrep -x Safari", "loadable": false }
+      ]
+    }
+  ]
+}

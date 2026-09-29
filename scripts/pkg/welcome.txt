@@ -1,0 +1,25 @@
+🐮 MooKeeper —— macOS 菜单栏「看门牛」
+
+内存 / SWAP / 输入功率 / CPU / GPU / 温度 / 风扇 / TOP 大户，一眼看完。
+服务、进程、模型可以分组，一键启停 + 系统通知（带品牌音「哞」）。
+
+这个安装包会做：
+  · 把 MooKeeper.app 装到 /Applications
+  · 注册登录自启（LaunchAgent，可到 系统设置 → 通用 → 登录项 里关掉）
+  · 复制示例配置到 ~/.config/mookeeper/（不会覆盖你已有的 config.json）
+  · 在 ~/Library/Sounds/ 放一份提示音 moo.aiff
+  · 装完立即启动 —— 菜单栏出现内存数字即成功
+
+卸载：源码目录里的 ./scripts/uninstall.sh，或直接删掉 /Applications/MooKeeper.app
+（再删 ~/Library/LaunchAgents/com.windy20000.mookeeper.plist 就不会再自启）。
+
+⚠️ 本包是 ad-hoc 签名、未经公证：
+
+  · 用浏览器下载的 .pkg，双击时 Gatekeeper 会拦一次 —— 到
+    系统设置 → 隐私与安全性 → 安全性 →「仍要打开」，再双击安装即可；
+  · 在终端里 `curl -O <pkg 地址>` 下载则不带隔离属性，双击直接装；
+  · 想彻底免掉这一步（发布方需要 Apple 开发者帐号），得用 Developer ID Installer
+    证书签名 + 公证，见 README 的「分发」一节。
+
+· 本机源码编译（./build.sh && ./install.sh）或 `curl ... | bash` 一行安装，都不经过
+  Gatekeeper，也不会看到上面这个提示。

@@ -1,0 +1,61 @@
+# MooKeeper 的 Homebrew formula（放在你自己的 tap 仓库里用）。
+#
+# 为什么用 formula（源码编译）而不是 cask：Homebrew 现在**不会再替你剥掉**下载产物的
+# com.apple.quarantine（cask/quarantine.rb 的注释写明它有意保留隔离来源），而 MooKeeper 是
+# ad-hoc 签名、未公证 —— 装完照样被 Gatekeeper 拦。本 formula 在用户机器上现编译，
+# 产物天生没有隔离属性，装完即用。
+#
+#   brew tap windy20000/tap
+#   brew install windy20000/tap/mookeeper          # 稳定版（见下方 url 的 sha256 说明）
+#   brew install --HEAD windy20000/tap/mookeeper   # 跟 main 最新
+#
+# ⚠️ 稳定版 url 指向 __URL_KIND__ 的源码 tarball + sha256。若这里写的是 main 分支，
+#    上游一 push，sha256 就失配（brew 会报 SHA256 mismatch）——用
+#    `./scripts/make_formula.sh` 重新生成，或（推荐）打 tag 后用
+#    `./scripts/make_formula.sh v0.1` 生成，tag 不会移动。
+class Mookeeper < Formula
+  desc "Native macOS menu bar monitor: memory, swap, power, temperature, services"
+  homepage "https://github.com/windy20000/mookeeper"
+  url "__URL__"
+  version "__VERSION__"
+  sha256 "__SHA256__"
+  license "MIT"
+
+  head "https://github.com/windy20000/mookeeper.git", branch: "main"
+
+  depends_on macos: :sonoma # Info.plist 的 LSMinimumSystemVersion = 14.0
+
+  def install
+    # 项目自带的构建脚本：clang 编 SMC.c、swiftc 编 Sources/*.swift、生成图标、ad-hoc 签名
+    system "./build.sh"
+    prefix.install "build/MooKeeper.app"
+  end
+
+  def caveats
+    <<~EOS
+      MooKeeper 是菜单栏 App（不是命令行工具），已装到：
+        #{opt_prefix}/MooKeeper.app
+
+      启动：
+        open #{opt_prefix}/MooKeeper.app
+
+      想让它出现在 ~/Applications 并登录自启，用源码里的安装脚本最省事
+      （它会把 App 复制到 ~/Applications、注册 LaunchAgent、铺示例配置）：
+        ln -sfn #{opt_prefix}/MooKeeper.app ~/Applications/MooKeeper.app
+        open ~/Applications/MooKeeper.app
+
+      配置在 ~/.config/mookeeper/config.json —— 首次启动会自动落地一份示例配置，
+      也可以把 #{prefix}/MooKeeper.app/Contents/Resources/config.example.zh.json 复制过去改。
+    EOS
+  end
+
+  test do
+    # ⚠️ 别在这里跑二进制（哪怕只是 `--dump`）：brew test 会把测试丢进 sandbox-exec，
+    # 里面 mach-lookup 被拦 → NSApplication 初始化走 _RegisterApplication → abort（SIGABRT 134）。
+    # 改成核对 bundle 结构，既稳定又能在沙箱里跑。
+    app = prefix/"MooKeeper.app"
+    assert_predicate app/"Contents/MacOS/mookeeper", :executable?
+    assert_path_exists app/"Contents/Resources/moo.aiff"
+    assert_match "<string>com.windy20000.mookeeper</string>", (app/"Contents/Info.plist").read
+  end
+end

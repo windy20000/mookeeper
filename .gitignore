@@ -1,0 +1,54 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+AGENTS.md
+*.d.md
+d.md
+
+# 内部工作文档与截图（*.d.md 的 glob 匹配不到裸名 d.md，需单列）
+preview/
+
+# gitleaks 扫描输出
+leaks.json
+
+# 个人配置与备份（config.json 内含任意命令，绝不入库；example 两版不受影响）
+config.json
+config.json.bak
+
+# 构建产物
+build/
+*.app
+*.dmg
+*.xcarchive
+
+# --errtest 诊断口默认往 CWD 出的四张对比图（本地验证产物，不入库）
+err-light.png
+err-dark.png
+err-light-hover.png
+err-dark-hover.png
+
+# Swift / 模块缓存
+.build/
+.swiftpm/
+*.modcache
+DerivedData/
+
+# 签名与配置文件（绝不入库）
+*.p12
+*.cer
+*.mobileprovision
+*.provisionprofile
+*.xcconfig
+
+# 环境与密钥
+.env
+.env.*
+
+# 所有点开头的文件/目录一律不入库（.DS_Store、.build/、.env 等已被这条覆盖，
+# 旧条目留着只为自解释）；例外：.gitignore 自己、.github/（CI，2026-10-04 落地）。
+# ⚠ 以后若要入库别的点目录，同样必须**目录级**放行（!.dir/）——
+# 父目录被排除时，它下面的文件无法再单独重新包含。
+.*
+!.gitignore
+!.github/
