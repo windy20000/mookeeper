@@ -6,8 +6,10 @@
 # 产出的 build/MooKeeper-<版本>.pkg 会：装 App 到 /Applications、清隔离属性、按登录用户
 # 铺示例配置/音效、注册登录自启、装完启动（细节见 scripts/pkg/postinstall）。
 #
-# ⚠️ 未签名的 PKG 经**浏览器**下载后带 com.apple.quarantine → 双击时 Gatekeeper 会拦一次
-#    （系统设置 → 隐私与安全性 → 安全性 →「仍要打开」）；终端 `curl -O` 下载则没有隔离属性，双击即装。
+# ⚠️ 未签名的 PKG 经**浏览器**下载后带 com.apple.quarantine → 双击被 Gatekeeper 直接判「程序已损坏」
+#    （macOS 15+ 对 unsigned pkg 没有「仍要打开」入口，spctl 实测 rejected/no usable signature）：
+#    解法一 `xattr -d com.apple.quarantine <pkg>` 后双击，解法二 `sudo installer -pkg <pkg> -target /`
+#    （installer 入口不跑 Gatekeeper 评估，两者 postinstall 均正常）；终端 `curl -O` 下载不带隔离属性，双击即装。
 #    要做到「陌生人下载即双击」，必须有 Developer ID Installer 证书签名 + 公证：
 #      MOOKEEPER_INSTALLER_ID="Developer ID Installer: 你的名字 (TEAMID)" ./scripts/make_pkg.sh
 #      xcrun notarytool submit build/MooKeeper-<版本>.pkg --keychain-profile <配置名> --wait
@@ -75,7 +77,7 @@ if [ -n "${MOOKEEPER_INSTALLER_ID:-}" ]; then
   productsign --sign "$MOOKEEPER_INSTALLER_ID" "$PKG" "$PKG.signed"
   mv "$PKG.signed" "$PKG"
 else
-  echo "ℹ️ 未签名 —— 浏览器下载的包会撞一次 Gatekeeper（「仍要打开」可放行）"
+  echo "ℹ️ 未签名 —— 浏览器下载的包会被 Gatekeeper 判「已损坏」（无「仍要打开」可绕）：先 xattr -d com.apple.quarantine <pkg> 再双击，或 sudo installer -pkg <pkg> -target /"
   echo "   要免掉它：MOOKEEPER_INSTALLER_ID=\"Developer ID Installer: …\" 重跑本脚本 + 公证"
 fi
 

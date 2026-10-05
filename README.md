@@ -164,7 +164,7 @@ MooKeeper 会执行你自己写在配置里的启动、停止和检查命令。�
 
 如果命令需要管理员权限，系统仍会弹出密码或 Touch ID 确认。不要为了省事把相关命令配置成免密 sudo；这会把“改一行配置”变成高权限执行入口。
 
-当前构建产物为 ad-hoc 签名，未做 Apple 公证。通过 `git clone`、一行安装脚本或 Homebrew 在本机编译安装时，通常不会触发浏览器下载文件的 Gatekeeper 拦截。若你分发 `.pkg`、`.dmg`、`.zip` 或 `.app` 给别人，浏览器下载后可能会被 macOS 首次拦截，需要用户在“系统设置 → 隐私与安全性”里选择仍要打开。想彻底消除这一步，需要 Developer ID 签名和公证。
+当前构建产物为 ad-hoc 签名，未做 Apple 公证。通过 `git clone`、一行安装脚本或 Homebrew 在本机编译安装时，通常不会触发浏览器下载文件的 Gatekeeper 拦截。若你分发 `.pkg`、`.dmg`、`.zip` 或 `.app` 给别人，浏览器下载后会被 macOS 拦截：`.app` / 归档类可在「系统设置 → 隐私与安全性」点「仍要打开」；**未签名的 `.pkg` 在 macOS 15+ 会直接弹「程序已损坏，无法打开」且没有放行入口**，需先在终端执行 `xattr -d com.apple.quarantine <下载的 .pkg>` 再双击安装，或改用 `sudo installer -pkg <下载的 .pkg> -target /`。想彻底消除这些步骤，需要 Developer ID 签名和公证。
 
 如果发现安全问题，请不要公开提交 issue，请通过 GitHub **Security → Report a vulnerability** 私密报告。
 
@@ -238,7 +238,7 @@ Use `groups` to define the scripts, services, local models, and actions you want
 
 MooKeeper runs the commands you put in its configuration. Only add commands you trust. Commands that require administrator privileges should still go through the normal macOS password or Touch ID prompt.
 
-The app is currently ad-hoc signed and not notarized. Source builds through `git clone`, the one-line installer, or Homebrew usually avoid browser-download Gatekeeper quarantine. Browser-distributed archives or installers may require “Open Anyway” unless you sign and notarize them with an Apple Developer ID.
+The app is currently ad-hoc signed and not notarized. Source builds through `git clone`, the one-line installer, or Homebrew usually avoid browser-download Gatekeeper quarantine. If you distribute `.pkg`, `.dmg`, `.zip` or `.app`, browsers add a quarantine attribute and macOS will block the first launch: apps and archives can be allowed via System Settings → Privacy & Security → "Open Anyway"; **an unsigned `.pkg` on macOS 15+ instead reports "the package is damaged and can't be opened" with no bypass offered** — clear quarantine first (`xattr -d com.apple.quarantine <the .pkg>`) and double-click, or install with `sudo installer -pkg <the .pkg> -target /`. Fully removing this step requires signing with an Apple Developer ID and notarizing.
 
 ### License
 
