@@ -45,10 +45,17 @@ fi
 
 SHA="$(shasum -a 256 "$TARBALL" | awk '{print $1}')"
 mkdir -p "$(dirname "$OUT")"
-sed -e "s|__URL__|$URL|" \
-    -e "s|__SHA256__|$SHA|" \
-    -e "s|__VERSION__|$VER|" \
-    -e "s|__URL_KIND__|$REF_KIND|" "$TMPL" >"$OUT"
+# tag URL 自带版本（brew 从 refs/tags/vX.Y 推断），显式写 version 会被 audit --strict 判冗余；
+# main/分支 URL 推不出版本，必须补一行。判据与 url_for 的 case 对齐（别用 REF_KIND——
+# 显式传 main 时下载不会走失败回落，REF_KIND 会停在 tag 上判错）。
+case "$REF" in
+  v[0-9]*)
+    sed -e "s|__URL__|$URL|" -e "s|__SHA256__|$SHA|" -e "s|__URL_KIND__|$REF_KIND|" \
+        -e "/^__VERSION_LINE__$/d" "$TMPL" >"$OUT" ;;
+  *)
+    sed -e "s|__URL__|$URL|" -e "s|__SHA256__|$SHA|" -e "s|__URL_KIND__|$REF_KIND|" \
+        -e "s|^__VERSION_LINE__$|  version \"$VER\"|" "$TMPL" >"$OUT" ;;
+esac
 
 echo "✅ 已生成 $OUT"
 echo "   url    = $URL"

@@ -1,3 +1,6 @@
+# typed: strict
+# frozen_string_literal: true
+
 # MooKeeper 的 Homebrew formula（放在你自己的 tap 仓库里用）。
 #
 # 为什么用 formula（源码编译）而不是 cask：Homebrew 现在**不会再替你剥掉**下载产物的
@@ -17,7 +20,7 @@ class Mookeeper < Formula
   desc "Native macOS menu bar monitor: memory, swap, power, temperature, services"
   homepage "https://github.com/windy20000/mookeeper"
   url "__URL__"
-  version "__VERSION__"
+__VERSION_LINE__
   sha256 "__SHA256__"
   license "MIT"
 
